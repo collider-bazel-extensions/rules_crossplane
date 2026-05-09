@@ -1,0 +1,95 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  analysis:
+    name: bazel test (ubuntu-latest, analysis)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-analysis
+          repository-cache: true
+
+      - name: bazel build //...
+        run: bazel build //...
+
+      - name: bazel test (analysis only)
+        run: bazel test //... --test_tag_filters=-manual --test_output=errors
+
+      - name: Smoke compositions build
+        run: bazel build //tests:render_smoke //tests:smoke_test
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazel-testlogs-analysis
+          path: bazel-testlogs/
+          if-no-files-found: ignore
+
+  render_smoke:
+    # Primitive 1: hermetic `crank render` against a real Composition
+    # + XR + function-patch-and-transform. Pulls the function image
+    # via Docker on the runner, runs it, asserts rendered kinds.
+    name: render smoke (ubuntu-latest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-render-smoke
+          repository-cache: true
+
+      - name: Verify Docker is available
+        run: docker version
+
+      - name: bazel test //tests:render_smoke
+        # crank pulls function-patch-and-transform's image (~150MB)
+        # the first time. 600s clears comfortably even on cold runners.
+        run: bazel test //tests:render_smoke --test_output=streamed --test_timeout=600
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazel-testlogs-render-smoke
+          path: bazel-testlogs/
+          if-no-files-found: ignore
+
+  controller_smoke:
+    # Primitive 2: kind cluster + Crossplane controller via the helm
+    # chart. Smoke verifies CRDs come up and a Composition write+read
+    # round-trips.
+    name: controller smoke (ubuntu-latest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-controller-smoke
+          repository-cache: true
+
+      - name: Verify Docker is available
+        run: docker version
+
+      - name: bazel test //tests:smoke_test
+        run: bazel test //tests:smoke_test --test_output=streamed --test_timeout=900
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazel-testlogs-controller-smoke
+          path: bazel-testlogs/
+          if-no-files-found: ignore

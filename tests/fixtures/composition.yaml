@@ -1,0 +1,46 @@
+# Smoke-fixture Composition for rules_crossplane's render test.
+#
+# Defines a single-step pipeline that uses function-patch-and-transform
+# to render one composed resource — a kubernetes.crossplane.io/v1alpha2
+# Object that wraps a ConfigMap. The patch maps `spec.name` from the XR
+# onto the ConfigMap's `metadata.name`.
+#
+# When `crank render xr.yaml composition.yaml functions.yaml` runs,
+# the function pulls (via Docker) the image referenced in
+# functions.yaml and the rendered output contains:
+#   - the XR (XSmoke), with the status its Composition produces
+#   - the composed Object
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: smoke-composition
+spec:
+  compositeTypeRef:
+    apiVersion: smoke.example.com/v1alpha1
+    kind: XSmoke
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: smoke-configmap
+            base:
+              apiVersion: kubernetes.crossplane.io/v1alpha2
+              kind: Object
+              spec:
+                forProvider:
+                  manifest:
+                    apiVersion: v1
+                    kind: ConfigMap
+                    metadata:
+                      namespace: default
+                    data:
+                      managed-by: rules_crossplane
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.name
+                toFieldPath: spec.forProvider.manifest.metadata.name

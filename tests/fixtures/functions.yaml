@@ -1,0 +1,11 @@
+# Smoke-fixture Function — function-patch-and-transform.
+#
+# The `package` URL is the Docker image `crank render` pulls + runs
+# locally to execute the function pipeline. v0.7.0 is a stable release
+# of the contrib function. Bump in lockstep with Crossplane's chart.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.7.0

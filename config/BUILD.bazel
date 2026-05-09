@@ -1,0 +1,5 @@
+"""Values file exported for inspection / extension."""
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["crossplane-values.yaml"])

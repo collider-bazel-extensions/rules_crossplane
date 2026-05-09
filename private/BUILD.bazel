@@ -1,0 +1,6 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "crank_toolchain.bzl",
+    "render_test.sh",
+])

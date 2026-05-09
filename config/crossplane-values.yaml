@@ -1,0 +1,51 @@
+# Render-time values for rules_crossplane's pinned manifest.
+#
+# Smoke-fixture footprint: single Crossplane controller Deployment +
+# RBAC manager Deployment + a few Secrets + ServiceAccounts. CRDs
+# are NOT installed by the chart — Crossplane's controller registers
+# them at runtime as the pod boots. wait_for_deployments transitively
+# gates on this since the Deployment becomes Available only after
+# the controller has booted.
+#
+# Production deploys override resource limits, replicas, and pre-load
+# Provider/Function packages via the `provider.packages` and
+# `configuration.packages` lists.
+
+# Single replica for the smoke. Production typically runs 2+ for HA
+# (Crossplane uses leader election so only one controller is active
+# at a time, but the spare replica picks up on failover).
+replicas: 1
+
+# kind has tight resource allocations; the chart's default
+# requests (100m CPU, 256Mi mem for crossplane; 100m/64Mi for
+# rbac-manager) sometimes refuse to schedule. Zero them out for
+# the smoke; production sets real values.
+resourcesCrossplane:
+  limits:
+    cpu: "500m"
+    memory: "256Mi"
+  requests:
+    cpu: "0"
+    memory: "0"
+
+resourcesRBACManager:
+  limits:
+    cpu: "100m"
+    memory: "64Mi"
+  requests:
+    cpu: "0"
+    memory: "0"
+
+# Drop the Prometheus metrics endpoint — we don't have Prometheus
+# in the smoke and the ServiceMonitor it'd render targets a CRD
+# that doesn't exist.
+metrics:
+  enabled: false
+
+# No Provider packages pre-installed. Consumers add them via
+# Provider CRs after Crossplane is up. Same for configuration
+# packages.
+provider:
+  packages: []
+configuration:
+  packages: []

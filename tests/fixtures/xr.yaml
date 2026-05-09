@@ -1,0 +1,7 @@
+# Smoke-fixture XR (composite) — input to the Composition pipeline.
+apiVersion: smoke.example.com/v1alpha1
+kind: XSmoke
+metadata:
+  name: smoke-xr
+spec:
+  name: smoke-configmap
