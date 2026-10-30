@@ -48,7 +48,7 @@ crossplane_render_test(
 
 # ---- Primitive 2 smoke: kind + Crossplane install --------------------------
 
-kind_cluster(name = "cluster", k8s_version = "1.32")
+kind_cluster(name = "cluster", k8s_version = "1.35")
 
 kind_health_check(name = "cluster_health", cluster = ":cluster")
 
