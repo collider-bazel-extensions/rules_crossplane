@@ -1,0 +1,12 @@
+# A second Function file for render_flags: same image as functions.yaml
+# under another name, so crank starts two containers in one run (each
+# must get its own container name). Not referenced by the pipeline.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform-extra
+  annotations:
+    # Overridden by the launcher (Remove + a per-run name).
+    render.crossplane.io/runtime-docker-cleanup: Orphan
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.7.0

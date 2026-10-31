@@ -57,7 +57,7 @@ The chart is sha256-pinned in [`tools/versions.bzl`](tools/versions.bzl).
 ## Installation
 
 ```python
-bazel_dep(name = "rules_crossplane", version = "0.1.0")
+bazel_dep(name = "rules_crossplane", version = "0.2.0")
 ```
 
 Bzlmod-only. Transitively pulls in `rules_kubectl` ≥ 0.2.0 and
@@ -72,8 +72,8 @@ non-default version.
 ## Primitive 1: `crossplane_render_test`
 
 Hermetic Composition rendering — no cluster required. Wraps
-`crank render <composite> <composition> <functions...>` as a
-Bazel test.
+`crank render <composite> <composition> <functions-dir> [args...]` as
+a Bazel test.
 
 ```python
 crossplane_render_test(
@@ -101,7 +101,11 @@ crossplane_render_test(
 |---|---|---|
 | `composite` | `label` (single `.yaml`) | The XR (composite resource) YAML to render. |
 | `composition` | `label` (single `.yaml`) | The Composition YAML. |
-| `functions` | `label_list` (`.yaml` files) | Composition Function YAML(s). Each is passed positionally to `crank render`. |
+| `functions` | `label_list` (`.yaml` files) | Composition Function YAML(s). Copied into one directory (crank takes a single functions path) with the container annotations set — see [Function containers](#function-containers). `metadata` must be block-style YAML. |
+| `required_resources` | `label_list` (`.yaml` files, optional) | Passed as `--required-resources` — resources Functions request, e.g. EnvironmentConfigs for function-environment-configs. Several files are staged into one directory. |
+| `observed_resources` | `label_list` (`.yaml` files, optional) | Passed as `--observed-resources` (observed state of composed resources). |
+| `data` | `label_list` (optional) | Extra runfiles, for files named in `args`. |
+| `args` | `string_list` (built-in) | Passed to `crank render` after the positional arguments, with `$(rootpath ...)` expansion for labels in `data`: e.g. `["--include-context", "--xrd=$(rootpath :xrd.yaml)"]`, `--function-credentials`, `--context-files`, `--timeout`. |
 | `expected_kinds` | `string_list` | Optional. Each kind must appear in the rendered output as a `kind: <name>` line. Empty = no kind assertion. |
 | `golden` | `label` (single `.yaml`, optional) | If set, full rendered output is diff'd against this file. Combine with `expected_kinds` for both checks. |
 
@@ -112,6 +116,38 @@ runs it in a container to execute the composition pipeline. The
 test needs the host's Docker daemon — tag the rule call
 `tags = ["requires-docker", "no-sandbox"]` so Bazel's sandbox
 doesn't strip docker access.
+
+Point the test at another engine with `--test_env=DOCKER_HOST=...`
+(e.g. rootless podman's `unix:///run/user/<uid>/podman/podman.sock`);
+crank and the cleanup below both use it.
+
+### Function containers
+
+crank starts one container per Function and does not label them,
+and a killed crank never reaches its own cleanup. The launcher
+therefore sets, on every `kind: Function` document (replacing any
+value you set):
+
+| Annotation | Value |
+|---|---|
+| `render.crossplane.io/runtime-docker-name` | `rules-crossplane-render-<boot>-<pidns>-<pid>-<starttime>-<n>` |
+| `render.crossplane.io/runtime-docker-cleanup` | `Remove` |
+
+and removes the run's containers:
+
+- **On exit** (pass or fail), whatever crank left. crank's own
+  `Remove` can give up: it stops the container under a 5 s deadline,
+  so a slow stop skips the removal and leaves a stopped container.
+- **On SIGTERM / SIGINT / SIGHUP** (Bazel timeout, Ctrl-C): crank is
+  stopped first, then the containers are removed; the test exits
+  128 + signal.
+- **At start**, for runs that were SIGKILLed: containers named with
+  this boot and pid namespace whose pid is gone, or has another start
+  time, are removed. Without `/proc` (macOS) this sweep is skipped.
+
+Cleanup uses the `docker` CLI (or `podman --url`) against
+`$DOCKER_HOST` (default `unix:///var/run/docker.sock`), the endpoint
+crank uses. With neither CLI installed the test warns and skips it.
 
 For fully-hermetic function execution (no Docker) you can use
 crank's `runtime: Development` mode and run the function as a
@@ -216,7 +252,7 @@ Commit the refreshed `private/manifests/crossplane.yaml`.
 | `crank` binary | Fully hermetic. URL + sha256 pinned per platform. | |
 | Crossplane manifest | Fully hermetic. Chart .tgz + sha256 pinned; rendered + committed. | |
 | `kubectl` | Inherited from `rules_kubectl`. | |
-| Composition Function images | **Pulled at test time via Docker**. Runs on the test host's Docker daemon. | Tag tests `requires-docker`, `no-sandbox`. |
+| Composition Function images | **Pulled at test time via Docker**. Runs on the test host's Docker daemon. | Tag tests `requires-docker`, `no-sandbox`. Containers are named per run and removed ([Function containers](#function-containers)). |
 | Crossplane container image | Pulled at runtime by the cluster (Primitive 2 only). `xpkg.crossplane.io/crossplane/crossplane:v2.2.1`. | Future: pre-load via `kind_cluster.images`. |
 
 ---

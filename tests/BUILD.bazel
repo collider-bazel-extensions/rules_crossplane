@@ -46,6 +46,67 @@ crossplane_render_test(
     ],
 )
 
+# Multiple function files (two containers in one run), a Function that
+# asks for `Orphan` (overridden), `required_resources`, and `args`
+# passed through to crank (`--include-context` adds a Context document).
+crossplane_render_test(
+    name = "render_flags",
+    composite = "fixtures/xr.yaml",
+    composition = "fixtures/composition.yaml",
+    functions = [
+        "fixtures/functions.yaml",
+        "fixtures/functions_extra.yaml",
+    ],
+    required_resources = ["fixtures/required.yaml"],
+    args = [
+        "--include-context",
+        "--xrd=$(rootpath fixtures/xrd.yaml)",
+    ],
+    data = ["fixtures/xrd.yaml"],
+    expected_kinds = [
+        "XSmoke",
+        "Object",
+        "Context",
+    ],
+    tags = [
+        "manual",
+        "requires-docker",
+        "no-sandbox",
+    ],
+)
+
+# Never finishes (see functions_hang.yaml); only run by
+# render_cleanup_test, which kills it.
+crossplane_render_test(
+    name = "render_hang",
+    composite = "fixtures/xr.yaml",
+    composition = "fixtures/composition.yaml",
+    functions = ["fixtures/functions_hang.yaml"],
+    args = ["--timeout=10m"],
+    tags = [
+        "manual",
+        "requires-docker",
+        "no-sandbox",
+    ],
+)
+
+# SIGKILLed and SIGTERMed runs of :render_hang, and a normal run of
+# :render_smoke, leave no function containers behind.
+sh_test(
+    name = "render_cleanup_test",
+    srcs = ["render_cleanup_test.sh"],
+    data = [
+        ":render_hang",
+        ":render_smoke",
+    ],
+    size = "large",
+    tags = [
+        "manual",
+        "requires-docker",
+        "no-sandbox",
+    ],
+)
+
 # ---- Primitive 2 smoke: kind + Crossplane install --------------------------
 
 kind_cluster(name = "cluster", k8s_version = "1.35")
