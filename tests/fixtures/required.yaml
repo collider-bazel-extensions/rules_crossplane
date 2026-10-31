@@ -1,0 +1,8 @@
+# Passed via `required_resources`. No Function in the smoke pipeline
+# requests it; crank still loads and validates it.
+apiVersion: apiextensions.crossplane.io/v1beta1
+kind: EnvironmentConfig
+metadata:
+  name: smoke-env
+data:
+  region: test
