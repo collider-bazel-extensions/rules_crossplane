@@ -57,7 +57,7 @@ The chart is sha256-pinned in [`tools/versions.bzl`](tools/versions.bzl).
 ## Installation
 
 ```python
-bazel_dep(name = "rules_crossplane", version = "0.2.0")
+bazel_dep(name = "rules_crossplane", version = "0.2.1")
 ```
 
 Bzlmod-only. Transitively pulls in `rules_kubectl` ≥ 0.2.0 and
@@ -66,6 +66,11 @@ Bzlmod-only. Transitively pulls in `rules_kubectl` ≥ 0.2.0 and
 The crank binary toolchain auto-registers via the module extension —
 no manual `crossplane.version()` call needed unless you want a
 non-default version.
+
+The release archive (the tag tarball) leaves out `tests/` and `tools/`, whose
+packages load dev-only modules, so `bazel query @rules_crossplane//...` works for
+consumers (through v0.2.0 it failed). A `git_override` clone still contains
+them; name packages instead (for example `@rules_crossplane//:all`).
 
 ---
 
