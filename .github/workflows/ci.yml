@@ -8,6 +8,21 @@ on:
   workflow_dispatch:
 
 jobs:
+  consumer:
+    # rules_crossplane as a dependency, from the commit's release archive: tests/
+    # and tools/ are export-ignore'd, and @rules_crossplane//... loads and builds.
+    name: consumer (ubuntu-latest, git archive)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          repository-cache: true
+
+      - name: Consumer checks
+        run: .github/consumer/check.sh "$RUNNER_TEMP/consumer"
+
   analysis:
     name: bazel test (ubuntu-latest, analysis)
     runs-on: ubuntu-latest
