@@ -57,7 +57,7 @@ The chart is sha256-pinned in [`tools/versions.bzl`](tools/versions.bzl).
 ## Installation
 
 ```python
-bazel_dep(name = "rules_crossplane", version = "0.2.1")
+bazel_dep(name = "rules_crossplane", version = "0.2.2")
 ```
 
 Bzlmod-only. Transitively pulls in `rules_kubectl` ≥ 0.2.0 and
@@ -289,3 +289,9 @@ Commit the refreshed `private/manifests/crossplane.yaml`.
 Want Bazel rules for another tool or service?
 [Request a rules package](https://github.com/collider-bazel-extensions/.github/issues/new?template=request-a-rules-package.yml).
 The [organization page](https://github.com/collider-bazel-extensions) lists every package.
+
+## License
+
+[Apache License 2.0](LICENSE) (SPDX: `Apache-2.0`).
+
+Manifests in `private/manifests/` that are rendered from upstream charts or releases remain under their upstream projects' licences.
